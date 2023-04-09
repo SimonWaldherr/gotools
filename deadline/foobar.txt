@@ -1,0 +1,4 @@
+this plain text file contains a deadline as an example,
+but you can use the deadline-string also directly in your source code files.
+
+@CHECK(2023-06-01;FAIL_CI;;refactoring, optimization; Improve database query performance)

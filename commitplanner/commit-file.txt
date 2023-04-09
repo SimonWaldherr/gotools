@@ -1,0 +1,198 @@
+--- Commit
+Autor: Max Mustermann
+Email: max.mustermann@example.tld
+Datum: 2023-04-07T15:00:00Z
+Message: Erstelle README.md
+--- Datei
+Name: README.md
+Inhalt:
+# Mein Projekt
+
+Das ist ein Beispielprojekt erstellt von {{.Author}} ({{.Email}}) am {{.Date}}.
+
+## Beschreibung
+
+Dieses Projekt demonstriert die Verwendung einer Golang-Anwendung, um mehrere Commits mit Autoren, Datum, Commit-Message, Dateinamen und Dateiinhalten in einer einzigen Datei zu definieren und mit Git zu committen.
+
+## Verwendung
+
+1. Erstellen Sie eine Datei namens `commit-file.txt` mit den gewünschten Commits und Dateiänderungen.
+2. Führen Sie die Golang-Anwendung aus, um die Commits und Dateiänderungen automatisch in Ihrem Git-Repository zu erstellen.
+
+---
+--- Commit
+Autor: John Doe
+Email: john.doe@example.tld
+Datum: 2023-04-07T16:00:00Z
+Message: Füge LICENSE hinzu
+--- Datei
+Name: LICENSE
+Inhalt:
+MIT License
+
+Copyright (c) {{.DateTime}} {{.Author}}
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+---
+--- Commit
+Autor: Max Mustermann
+Email: max.mustermann@example.tld
+Datum: 2023-04-07T17:00:00Z
+Message: Aktualisiere README.md mit Installationsanweisungen
+--- Datei
+Name: README.md
+Inhalt:
+{{.PrevContent}}
+
+## Installation
+
+Folgen Sie diesen Schritten, um das Projekt zu installieren und auszuführen:
+
+1. Klonen Sie das Repository.
+1. Wechseln Sie in das Projektverzeichnis.
+1. Kompilieren Sie die Golang-Anwendung mit dem Befehl `go build`.
+1. Führen Sie die kompilierte Anwendung aus.
+
+---
+--- Commit
+Autor: Max Mustermann
+Email: max.mustermann@example.tld
+Datum: 2023-04-07T18:00:00Z
+Message: Füge .gitignore hinzu
+--- Datei
+Name: .gitignore
+Inhalt:
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# Dependency directories
+vendor/
+
+# Build artifacts
+_build/
+
+# Log files
+*.log
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*~.nib
+
+# IntelliJ / IDE files
+.idea/
+*.iml
+
+# Visual Studio Code files
+.vscode/
+
+# macOS files
+.DS_Store
+
+---
+--- Commit
+Autor: Max Mustermann
+Email: max.mustermann@example.tld
+Datum: 2023-04-07T19:00:00Z
+Message: Füge main.go hinzu
+--- Datei
+Name: main.go
+Inhalt:
+package main
+
+import (
+"fmt"
+)
+
+func main() {
+fmt.Println("Willkommen bei Mein Projekt!")
+}
+
+---
+--- Commit
+Autor: John Doe
+Email: john.doe@example.tld
+Datum: 2023-04-07T20:00:00Z
+Message: Aktualisiere README.md mit weiteren Informationen
+--- Datei
+Name: README.md
+Inhalt:
+{{.PrevContent}}
+
+## Weiterentwicklung
+
+Dieses Beispielprojekt ist ein guter Ausgangspunkt für die Entwicklung eigener Projekte mit mehreren Commits und Dateiänderungen. Sie können das Projekt anpassen, um unterschiedliche Anforderungen zu erfüllen, oder es als Basis für neue Projekte verwenden.
+
+---
+--- Commit
+Autor: John Doe
+Email: john.doe@example.tld
+Datum: 2023-04-07T21:00:00Z
+Message: Aktualisiere main.go mit zusätzlicher Funktion
+--- Datei
+Name: main.go
+Inhalt:
+package main
+
+import (
+"fmt"
+)
+
+func main() {
+fmt.Println("Willkommen bei Mein Projekt!")
+showVersion()
+}
+
+func showVersion() {
+fmt.Println("Version 1.0.0")
+}
+
+---
+--- Commit
+Autor: John Doe
+Email: john.doe@example.tld
+Datum: 2023-04-07T22:00:00Z
+Message: Füge CONTRIBUTING.md hinzu
+--- Datei
+Name: CONTRIBUTING.md
+Inhalt:
+
+# Contributing
+
+Vielen Dank für Ihr Interesse daran, zu diesem Projekt beizutragen!
+
+## Issues
+
+Wenn Sie ein Problem finden oder einen Fehler beheben möchten, erstellen Sie bitte ein Issue im Repository. Stellen Sie sicher, dass das Problem noch nicht gemeldet wurde, bevor Sie ein neues Issue erstellen.
+
+## Pull Requests
+
+1. Forken Sie das Projekt.
+1. Erstellen Sie einen Branch für Ihre Änderungen.
+1. Führen Sie die Änderungen durch und testen Sie sie gründlich.
+1. Fügen Sie Ihre Commits hinzu und schreiben Sie eine aussagekräftige Commit-Nachricht.
+1. Erstellen Sie einen Pull Request mit einer Beschreibung Ihrer Änderungen.
+
+Bitte beachten Sie, dass wir möglicherweise nicht alle Pull Requests akzeptieren können, insbesondere wenn sie nicht den Projektzielen entsprechen oder den Code und die Struktur des Projekts negativ beeinflussen.
+
+---
