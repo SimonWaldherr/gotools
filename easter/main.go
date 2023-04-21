@@ -1,3 +1,4 @@
+// Description: Calculates the date of Easter for a given year using the Gauss Easter formula
 package main
 
 import (

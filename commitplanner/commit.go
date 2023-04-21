@@ -1,3 +1,5 @@
+// Description: Commit planner is a tool to plan commits for a git repository.
+// It reads a file with the commits and applies them to the git repository.
 package main
 
 import (

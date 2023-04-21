@@ -1,3 +1,4 @@
+// Description: A simple WebSocket client written in Go
 package main
 
 import (

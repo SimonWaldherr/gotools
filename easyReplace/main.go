@@ -1,3 +1,4 @@
+// Description: A simple tool to replace a string in a file with another string.
 package main
 
 import (

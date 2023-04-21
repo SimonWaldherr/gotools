@@ -1,3 +1,6 @@
+// Description: A tool to check for deadlines in source code.
+// It searches for the @CHECK annotation and checks if the deadline has passed.
+// If it has, it prints the line and returns an error.
 package main
 
 import (
