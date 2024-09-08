@@ -89,7 +89,7 @@ func combineFiles(files []string, outputFileName string) error {
 		// Fast Mode: Load all files into memory first
 		fileData := loadAllFiles(files)
 		for fileIndex, data := range fileData {
-			if err := processFileData(outputFile, sheetName, data, fileIndex == 0, &currentRow, &columnsInOrder, &columnMap); err != nil {
+			if err := processFileData(outputFile, sheetName, data, files[fileIndex], fileIndex == 0, &currentRow, &columnsInOrder, &columnMap); err != nil {
 				return err
 			}
 		}
@@ -104,7 +104,7 @@ func combineFiles(files []string, outputFileName string) error {
 			}
 
 			for _, sheet := range f.GetSheetList() {
-				_, colOrder, err := getColumns(f, sheet)
+				columns, colOrder, err := getColumns(f, sheet)
 				if err != nil {
 					fmt.Printf("Error reading columns from sheet %s in file %s: %v\n", sheet, file, err)
 					continue
@@ -117,7 +117,7 @@ func combineFiles(files []string, outputFileName string) error {
 					currentRow++
 				}
 
-				if err := writeRowsFromFile(f, outputFile, sheetName, sheet, columnsInOrder, currentRow); err != nil {
+				if err := writeRowsFromFile(f, outputFile, sheetName, sheet, columnsInOrder, currentRow, file); err != nil {
 					fmt.Printf("Error writing rows from sheet %s in file %s: %v\n", sheet, file, err)
 					continue
 				}
@@ -176,9 +176,8 @@ func loadAllFiles(files []string) []map[string]map[string][][]string {
 }
 
 // processFileData processes preloaded file data for fast mode.
-func processFileData(outputFile *excelize.File, sheetName string, fileData map[string]map[string][][]string, isFirstFile bool, currentRow *int, columnsInOrder *[]string, columnMap *map[string]string) error {
+func processFileData(outputFile *excelize.File, sheetName string, fileData map[string]map[string][][]string, fileName string, isFirstFile bool, currentRow *int, columnsInOrder *[]string, columnMap *map[string]string) error {
 	for sheet, data := range fileData {
-		_ = sheet
 		columns := data["columns"][0]
 		rows := data["data"]
 
@@ -195,10 +194,13 @@ func processFileData(outputFile *excelize.File, sheetName string, fileData map[s
 			cellMap := mapRowToHeader(row, rows[0])
 			for colIndex, normalized := range *columnsInOrder {
 				if value, ok := cellMap[normalized]; ok {
-					colName, _ := excelize.ColumnNumberToName(colIndex + 1)
+					colName, _ := excelize.ColumnNumberToName(colIndex + 2) // Adjust index for filename column
 					outputFile.SetCellValue(sheetName, fmt.Sprintf("%s%d", colName, *currentRow+i), value)
 				}
 			}
+			// Write the filename as the first column value
+			colName, _ := excelize.ColumnNumberToName(1) // Filename column
+			outputFile.SetCellValue(sheetName, fmt.Sprintf("%s%d", colName, *currentRow+i), fileName)
 		}
 	}
 
@@ -206,7 +208,7 @@ func processFileData(outputFile *excelize.File, sheetName string, fileData map[s
 }
 
 // writeRowsFromFile writes rows from a single file to the output file.
-func writeRowsFromFile(inputFile *excelize.File, outputFile *excelize.File, sheetName, inputSheet string, columnOrder []string, currentRow int) error {
+func writeRowsFromFile(inputFile *excelize.File, outputFile *excelize.File, sheetName, inputSheet string, columnOrder []string, currentRow int, fileName string) error {
 	rows, err := inputFile.GetRows(inputSheet)
 	if err != nil {
 		return fmt.Errorf("error reading rows from sheet %s: %w", inputSheet, err)
@@ -219,10 +221,13 @@ func writeRowsFromFile(inputFile *excelize.File, outputFile *excelize.File, shee
 		cellMap := mapRowToHeader(row, rows[0])
 		for colIndex, normalized := range columnOrder {
 			if value, ok := cellMap[normalized]; ok {
-				colName, _ := excelize.ColumnNumberToName(colIndex + 1)
+				colName, _ := excelize.ColumnNumberToName(colIndex + 2) // Adjust index for filename column
 				outputFile.SetCellValue(sheetName, fmt.Sprintf("%s%d", colName, currentRow+i), value)
 			}
 		}
+		// Write the filename as the first column value
+		colName, _ := excelize.ColumnNumberToName(1) // Filename column
+		outputFile.SetCellValue(sheetName, fmt.Sprintf("%s%d", colName, currentRow+i), fileName)
 	}
 
 	return nil
@@ -237,6 +242,8 @@ func updateColumns(finalOrder *[]string, columnMap *map[string]string, currentCo
 		}
 	} else {
 		for _, col := range currentColumns {
+
+
 			normalized := normalizeHeader(col)
 			if _, exists := (*columnMap)[normalized]; !exists {
 				*finalOrder = append(*finalOrder, normalized)
@@ -250,7 +257,7 @@ func updateColumns(finalOrder *[]string, columnMap *map[string]string, currentCo
 func writeHeaders(outputFile *excelize.File, sheetName string, columnMap map[string]string, columnOrder []string) {
 	for i, normalized := range columnOrder {
 		if original, ok := columnMap[normalized]; ok {
-			colName, _ := excelize.ColumnNumberToName(i + 1)
+			colName, _ := excelize.ColumnNumberToName(i + 2) // Adjust index for filename column
 			outputFile.SetCellValue(sheetName, fmt.Sprintf("%s%d", colName, 1), original)
 		}
 	}
