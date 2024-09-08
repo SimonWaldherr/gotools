@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -10,16 +11,23 @@ import (
 	"github.com/xuri/excelize/v2"
 )
 
-// getExcelFiles sucht nach allen .xlsx, .xlsm und .xlsb Dateien im aktuellen Verzeichnis.
+// Command-line flag for mode selection
+var fastMode bool
+
+func init() {
+	// Define a command-line flag to enable fast mode
+	flag.BoolVar(&fastMode, "fast", false, "Enable fast mode (load all files into memory)")
+}
+
+// getExcelFiles searches for all .xlsx, .xlsm, and .xlsb files in the current directory.
 func getExcelFiles() ([]string, error) {
 	var files []string
-	// Walk durch das aktuelle Verzeichnis, um alle Excel-Dateien zu finden
+	// Walk through the current directory to find Excel files
 	err := filepath.Walk(".", func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
-		// Prüft, ob die Datei die gesuchten Endungen hat
-		if !info.IsDir() && (strings.HasSuffix(info.Name(), ".xlsx") || strings.HasSuffix(info.Name(), ".xlsm") || strings.HasSuffix(info.Name(), ".xlsb")) {
+		if !info.IsDir() && isExcelFile(info.Name()) {
 			files = append(files, path)
 		}
 		return nil
@@ -27,131 +35,100 @@ func getExcelFiles() ([]string, error) {
 	return files, err
 }
 
-// normalizeHeader nimmt einen Header-String und normalisiert ihn.
-// Dies bedeutet: Kleinbuchstaben, Entfernen von Sonderzeichen und Leerzeichen.
+// isExcelFile checks if a file has .xlsx, .xlsm, or .xlsb extensions.
+func isExcelFile(fileName string) bool {
+	extensions := []string{".xlsx", ".xlsm", ".xlsb"}
+	for _, ext := range extensions {
+		if strings.HasSuffix(fileName, ext) {
+			return true
+		}
+	}
+	return false
+}
+
+// normalizeHeader normalizes the header by converting to lowercase and removing special characters and spaces.
 func normalizeHeader(header string) string {
-	// Kleinbuchstaben umwandeln
 	header = strings.ToLower(header)
-	// Entfernen von Sonderzeichen und Leerzeichen mit einem regulären Ausdruck
+	// Remove non-alphanumeric characters
 	reg := regexp.MustCompile(`[^a-zA-Z0-9]+`)
 	return reg.ReplaceAllString(header, "")
 }
 
-// getColumns liest die erste Zeile eines Tabellenblatts, welche die Spaltenüberschriften enthält,
-// und normalisiert diese. Gibt sowohl die normalisierten als auch die Originalüberschriften zurück.
+// getColumns reads the first row of a sheet (considered the header row) and normalizes it.
+// Returns both normalized and original headers.
 func getColumns(f *excelize.File, sheetName string) (map[string]string, []string, error) {
 	rows, err := f.GetRows(sheetName)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	// Mapping von normalisierten Headern auf die Originale und die Reihenfolge der Spalten
 	columns := make(map[string]string)
 	var columnOrder []string
 	if len(rows) > 0 {
+		// Process the first row as headers
 		for _, cell := range rows[0] {
 			normalized := normalizeHeader(cell)
-			columns[normalized] = cell  // Speichere das Original unter dem normalisierten Header
-			columnOrder = append(columnOrder, normalized) // Die Reihenfolge der Spalten speichern
+			columns[normalized] = cell
+			columnOrder = append(columnOrder, normalized)
 		}
 	}
 	return columns, columnOrder, nil
 }
 
-// combineFiles kombiniert alle Excel-Dateien zu einer großen Datei und berücksichtigt
-// dabei nur die gemeinsamen Spalten. Die Spaltenüberschriften werden normalisiert.
+// combineFiles combines all Excel files into one large file, with an order of columns based on the input files.
 func combineFiles(files []string, outputFileName string) error {
-	// Erstellen einer neuen Datei für die kombinierten Daten
 	outputFile := excelize.NewFile()
 	sheetName := "Combined"
 	outputFile.NewSheet(sheetName)
 
-	// Aktuelle Zeile in der neuen Datei, ab der geschrieben wird
 	currentRow := 1
-	commonColumns := make(map[string]string)  // Mapping von normalisierten Headern zu Original-Headern
-	columnOrder := []string{}                 // Speichert die Reihenfolge der gemeinsamen Spalten
+	columnsInOrder := []string{}
+	columnMap := make(map[string]string)
 
-	for _, file := range files {
-		fmt.Printf("Processing file: %s\n", file)
-		f, err := excelize.OpenFile(file)
-		if err != nil {
-			fmt.Println(err)
-			continue
+	if fastMode {
+		// Fast Mode: Load all files into memory first
+		fileData := loadAllFiles(files)
+		for fileIndex, data := range fileData {
+			if err := processFileData(outputFile, sheetName, data, fileIndex == 0, &currentRow, &columnsInOrder, &columnMap); err != nil {
+				return err
+			}
 		}
-
-		for _, sheet := range f.GetSheetList() {
-			columns, colOrder, err := getColumns(f, sheet)
-			_ = colOrder
+	} else {
+		// Memory-Efficient Mode: Process files one by one
+		for fileIndex, file := range files {
+			fmt.Printf("Processing file: %s\n", file)
+			f, err := excelize.OpenFile(file)
 			if err != nil {
-				fmt.Printf("Error reading columns from sheet %s in file %s: %v\n", sheet, file, err)
+				fmt.Println(err)
 				continue
 			}
 
-			// Bestimmen der gemeinsamen Spalten über alle Dateien hinweg
-			if len(commonColumns) == 0 {
-				// Beim ersten Durchlauf fügen wir alle Spalten zur gemeinsamen Liste hinzu
-				for normalized, original := range columns {
-					commonColumns[normalized] = original
-					columnOrder = append(columnOrder, normalized)
-				}
-			} else {
-				// Entfernen von Spalten, die in diesem Blatt nicht vorhanden sind
-				for col := range commonColumns {
-					if _, ok := columns[col]; !ok {
-						delete(commonColumns, col)
-					}
-				}
-			}
-
-			// Wenn es die erste Datei/Sheet ist, schreibe die Original-Header in die Ausgabe
-			if currentRow == 1 {
-				for i, normalized := range columnOrder {
-					if original, ok := commonColumns[normalized]; ok {
-						// Setze die Original-Header in die erste Zeile
-						colName, _ := excelize.ColumnNumberToName(i + 1)
-						outputFile.SetCellValue(sheetName, fmt.Sprintf("%s%d", colName, currentRow), original)
-					}
-				}
-				currentRow++ // Nächste Zeile nach der Header-Zeile
-			}
-
-			// Lesen aller Zeilen dieses Tabellenblattes
-			rows, err := f.GetRows(sheet)
-			if err != nil {
-				fmt.Printf("Error reading rows from sheet %s in file %s: %v\n", sheet, file, err)
-				continue
-			}
-
-			// Iterieren durch alle Zeilen außer der ersten (Header)
-			for i, row := range rows {
-				if i == 0 {
-					// Die Header-Zeile wird übersprungen, da sie schon geschrieben wurde
+			for _, sheet := range f.GetSheetList() {
+				_, colOrder, err := getColumns(f, sheet)
+				if err != nil {
+					fmt.Printf("Error reading columns from sheet %s in file %s: %v\n", sheet, file, err)
 					continue
 				}
 
-				// Erstellen einer Map für die aktuellen Spalten dieser Zeile
-				cellMap := make(map[string]string)
-				for j, cell := range row {
-					currentHeader := normalizeHeader(rows[0][j])
-					cellMap[currentHeader] = cell
+				// Update column orders and map for merging
+				updateColumns(&columnsInOrder, &columnMap, colOrder, fileIndex == 0)
+				if currentRow == 1 {
+					writeHeaders(outputFile, sheetName, columnMap, columnsInOrder)
+					currentRow++
 				}
 
-				// Schreibe die Zellen in die entsprechenden Spalten in der kombinierten Datei
-				for colIndex, normalized := range columnOrder {
-					if value, ok := cellMap[normalized]; ok {
-						colName, _ := excelize.ColumnNumberToName(colIndex + 1)
-						outputFile.SetCellValue(sheetName, fmt.Sprintf("%s%d", colName, currentRow), value)
-					}
+				if err := writeRowsFromFile(f, outputFile, sheetName, sheet, columnsInOrder, currentRow); err != nil {
+					fmt.Printf("Error writing rows from sheet %s in file %s: %v\n", sheet, file, err)
+					continue
 				}
-				currentRow++ // Nächste Zeile
+				rows, _ := f.GetRows(sheet)
+				currentRow += len(rows) - 1
 			}
-		}
 
-		// Schließen der Datei
-		_ = f.Close()
+			_ = f.Close()
+		}
 	}
 
-	// Speichern der kombinierten Datei
 	if err := outputFile.SaveAs(outputFileName); err != nil {
 		return fmt.Errorf("error saving combined file: %w", err)
 	}
@@ -160,21 +137,149 @@ func combineFiles(files []string, outputFileName string) error {
 	return nil
 }
 
+// loadAllFiles loads all files into memory for fast processing.
+func loadAllFiles(files []string) []map[string]map[string][][]string {
+	var allData []map[string]map[string][][]string
+	for _, file := range files {
+		f, err := excelize.OpenFile(file)
+		if err != nil {
+			fmt.Println(err)
+			continue
+		}
+
+		fileData := make(map[string]map[string][][]string)
+		for _, sheet := range f.GetSheetList() {
+			rows, err := f.GetRows(sheet)
+			if err != nil {
+				fmt.Printf("Error reading rows from sheet %s in file %s: %v\n", sheet, file, err)
+				continue
+			}
+
+			columns, colOrder, err := getColumns(f, sheet)
+			_ = columns
+			
+			if err != nil {
+				fmt.Printf("Error reading columns from sheet %s in file %s: %v\n", sheet, file, err)
+				continue
+			}
+
+			// Save both column order and rows for this sheet
+			fileData[sheet] = map[string][][]string{
+				"columns": {colOrder},
+				"data":    rows,
+			}
+		}
+		allData = append(allData, fileData)
+	}
+
+	return allData
+}
+
+// processFileData processes preloaded file data for fast mode.
+func processFileData(outputFile *excelize.File, sheetName string, fileData map[string]map[string][][]string, isFirstFile bool, currentRow *int, columnsInOrder *[]string, columnMap *map[string]string) error {
+	for sheet, data := range fileData {
+		_ = sheet
+		columns := data["columns"][0]
+		rows := data["data"]
+
+		updateColumns(columnsInOrder, columnMap, columns, isFirstFile)
+		if *currentRow == 1 {
+			writeHeaders(outputFile, sheetName, *columnMap, *columnsInOrder)
+			(*currentRow)++
+		}
+
+		for i, row := range rows {
+			if i == 0 {
+				continue // Skip the header row
+			}
+			cellMap := mapRowToHeader(row, rows[0])
+			for colIndex, normalized := range *columnsInOrder {
+				if value, ok := cellMap[normalized]; ok {
+					colName, _ := excelize.ColumnNumberToName(colIndex + 1)
+					outputFile.SetCellValue(sheetName, fmt.Sprintf("%s%d", colName, *currentRow+i), value)
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+// writeRowsFromFile writes rows from a single file to the output file.
+func writeRowsFromFile(inputFile *excelize.File, outputFile *excelize.File, sheetName, inputSheet string, columnOrder []string, currentRow int) error {
+	rows, err := inputFile.GetRows(inputSheet)
+	if err != nil {
+		return fmt.Errorf("error reading rows from sheet %s: %w", inputSheet, err)
+	}
+
+	for i, row := range rows {
+		if i == 0 {
+			continue // Skip the header row
+		}
+		cellMap := mapRowToHeader(row, rows[0])
+		for colIndex, normalized := range columnOrder {
+			if value, ok := cellMap[normalized]; ok {
+				colName, _ := excelize.ColumnNumberToName(colIndex + 1)
+				outputFile.SetCellValue(sheetName, fmt.Sprintf("%s%d", colName, currentRow+i), value)
+			}
+		}
+	}
+
+	return nil
+}
+
+// updateColumns updates the final column order and map for each file processed.
+func updateColumns(finalOrder *[]string, columnMap *map[string]string, currentColumns []string, isFirstFile bool) {
+	if isFirstFile {
+		for _, col := range currentColumns {
+			*finalOrder = append(*finalOrder, col)
+			(*columnMap)[normalizeHeader(col)] = col
+		}
+	} else {
+		for _, col := range currentColumns {
+			normalized := normalizeHeader(col)
+			if _, exists := (*columnMap)[normalized]; !exists {
+				*finalOrder = append(*finalOrder, normalized)
+				(*columnMap)[normalized] = col
+			}
+		}
+	}
+}
+
+// writeHeaders writes headers to the output file.
+func writeHeaders(outputFile *excelize.File, sheetName string, columnMap map[string]string, columnOrder []string) {
+	for i, normalized := range columnOrder {
+		if original, ok := columnMap[normalized]; ok {
+			colName, _ := excelize.ColumnNumberToName(i + 1)
+			outputFile.SetCellValue(sheetName, fmt.Sprintf("%s%d", colName, 1), original)
+		}
+	}
+}
+
+// mapRowToHeader creates a map between the row's cells and the header names.
+func mapRowToHeader(row, header []string) map[string]string {
+	cellMap := make(map[string]string)
+	for j, cell := range row {
+		currentHeader := normalizeHeader(header[j])
+		cellMap[currentHeader] = cell
+	}
+	return cellMap
+}
+
 func main() {
-	// 1. Excel-Dateien aus dem aktuellen Verzeichnis finden
+	flag.Parse()
+
 	files, err := getExcelFiles()
 	if err != nil {
 		fmt.Printf("Error finding Excel files: %v\n", err)
 		return
 	}
 
-	// Überprüfen, ob Dateien gefunden wurden
 	if len(files) == 0 {
 		fmt.Println("No Excel files found in the current directory.")
 		return
 	}
 
-	// 2. Kombinieren der gefundenen Dateien in eine große Datei
 	err = combineFiles(files, "CombinedOutput.xlsx")
 	if err != nil {
 		fmt.Printf("Error combining files: %v\n", err)
