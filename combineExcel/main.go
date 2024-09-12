@@ -37,7 +37,8 @@ func getExcelFiles() ([]string, error) {
 
 // isExcelFile checks if a file has .xlsx, .xlsm, or .xlsb extensions.
 func isExcelFile(fileName string) bool {
-	extensions := []string{".xlsx", ".xlsm", ".xlsb"}
+	//extensions := []string{".xlsx", ".xlsm", ".xlsb"}
+	extensions := []string{".xlsx"}
 	for _, ext := range extensions {
 		if strings.HasSuffix(fileName, ext) {
 			return true
@@ -105,6 +106,7 @@ func combineFiles(files []string, outputFileName string) error {
 
 			for _, sheet := range f.GetSheetList() {
 				columns, colOrder, err := getColumns(f, sheet)
+				_ = columns
 				if err != nil {
 					fmt.Printf("Error reading columns from sheet %s in file %s: %v\n", sheet, file, err)
 					continue
@@ -157,7 +159,7 @@ func loadAllFiles(files []string) []map[string]map[string][][]string {
 
 			columns, colOrder, err := getColumns(f, sheet)
 			_ = columns
-			
+
 			if err != nil {
 				fmt.Printf("Error reading columns from sheet %s in file %s: %v\n", sheet, file, err)
 				continue
@@ -178,6 +180,7 @@ func loadAllFiles(files []string) []map[string]map[string][][]string {
 // processFileData processes preloaded file data for fast mode.
 func processFileData(outputFile *excelize.File, sheetName string, fileData map[string]map[string][][]string, fileName string, isFirstFile bool, currentRow *int, columnsInOrder *[]string, columnMap *map[string]string) error {
 	for sheet, data := range fileData {
+		_ = sheet
 		columns := data["columns"][0]
 		rows := data["data"]
 
@@ -242,7 +245,6 @@ func updateColumns(finalOrder *[]string, columnMap *map[string]string, currentCo
 		}
 	} else {
 		for _, col := range currentColumns {
-
 
 			normalized := normalizeHeader(col)
 			if _, exists := (*columnMap)[normalized]; !exists {
