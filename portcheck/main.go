@@ -45,7 +45,7 @@ func main() {
 			parts := strings.SplitN(ps, "-", 2)
 			start, err1 := strconv.Atoi(strings.TrimSpace(parts[0]))
 			end, err2 := strconv.Atoi(strings.TrimSpace(parts[1]))
-			if err1 != nil || err2 != nil || start > end {
+			if err1 != nil || err2 != nil || start > end || start < 1 || end > 65535 {
 				fmt.Fprintf(os.Stderr, "Invalid port range: %s\n", ps)
 				os.Exit(1)
 			}

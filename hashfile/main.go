@@ -1,5 +1,7 @@
 // Description: A tool to compute checksums (MD5, SHA1, SHA256, SHA512) for one or more files.
 // It prints the hash and filename in a format similar to md5sum / sha256sum.
+// Note: MD5 and SHA1 are provided for interoperability only; they are cryptographically
+// broken and must not be used for security-sensitive purposes.
 package main
 
 import (
