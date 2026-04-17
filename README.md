@@ -21,4 +21,25 @@ Calculates the date of Easter for a given year using the Gauss Easter formula
 ### WeSoc
 A simple WebSocket client written in Go
 
+### jsonformat
+A tool to format and validate JSON from a file or stdin.
+It reads JSON input, validates it, and writes it to stdout in pretty-printed or compact form.
+Flags: `-file`, `-compact`, `-validate`, `-indent`
+
+### portcheck
+A tool to check if TCP ports are open on a remote host.
+Accepts a host and one or more ports (including ranges like `80-90`) and reports which are open or closed.
+Flags: `-host`, `-ports`, `-timeout`, `-parallel`
+
+### envcheck
+A tool to verify that required environment variables are set.
+Reads variable names from flags or a file and exits with a non-zero code if any are missing.
+Useful in CI/CD pipelines and startup scripts.
+Flags: `-vars`, `-file`, `-quiet`
+
+### hashfile
+A tool to compute checksums (MD5, SHA1, SHA256, SHA512) for one or more files.
+Output format is compatible with md5sum / sha256sum.
+Supports multiple algorithms at once via comma-separated list.
+Flags: `-algo`
 
